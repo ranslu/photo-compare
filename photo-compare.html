@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Lightbox — Before / After Compare</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0b0c0e;
+    --panel: #141619;
+    --panel-2: #1b1e22;
+    --line: #26292e;
+    --text: #eceeef;
+    --muted: #8a8d93;
+    --teal: #2fd6c2;
+    --orange: #ff8a3d;
+    --danger: #e5484d;
+    --radius: 10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; height:100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    overflow:hidden;
+  }
+  .mono{ font-family:'JetBrains Mono', monospace; }
+  .app{
+    display:grid;
+    grid-template-columns: 272px 1fr;
+    height:100vh;
+  }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar{
+    background: var(--panel);
+    border-right: 1px solid var(--line);
+    display:flex;
+    flex-direction:column;
+    min-width:0;
+  }
+  .brand{
+    padding: 20px 18px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  .brand h1{
+    font-family:'Sora', sans-serif;
+    font-size: 17px;
+    font-weight:700;
+    margin:0 0 2px;
+    letter-spacing:0.2px;
+  }
+  .brand h1 span{ color: var(--teal); }
+  .brand p{
+    margin:0; font-size:11.5px; color: var(--muted);
+  }
+  .add-zone{
+    margin: 14px 14px 8px;
+  }
+  .btn{
+    width:100%;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    background: var(--panel-2);
+    border: 1px dashed var(--line);
+    color: var(--text);
+    padding: 11px 10px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-weight:500;
+    cursor:pointer;
+    transition: border-color .15s ease, background .15s ease, color .15s ease;
+  }
+  .btn:hover{
+    border-color: var(--teal);
+    color: var(--teal);
+    background: #15201f;
+  }
+  .btn.solid{
+    background: linear-gradient(135deg, var(--teal), #1fae9e);
+    border: none;
+    color: #06110f;
+    font-weight:600;
+  }
+  .btn.solid:hover{ filter: brightness(1.08); color:#06110f; }
+  .btn.small{ padding: 8px 10px; font-size:12px; }
+  .btn:disabled{ opacity:.4; cursor:not-allowed; }
+
+  .hint{
+    font-size: 10.5px;
+    color: var(--muted);
+    text-align:center;
+    margin: 6px 14px 2px;
+    line-height:1.5;
+  }
+
+  .list{
+    flex:1;
+    overflow-y:auto;
+    padding: 10px 10px 14px;
+    display:flex; flex-direction:column; gap:8px;
+  }
+  .list::-webkit-scrollbar{ width:8px; }
+  .list::-webkit-scrollbar-thumb{ background: var(--line); border-radius: 8px; }
+
+  .item{
+    position:relative;
+    display:flex; align-items:center; gap:10px;
+    padding: 8px;
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    background: var(--panel-2);
+    cursor:pointer;
+    transition: border-color .15s ease, transform .1s ease;
+  }
+  .item:hover{ border-color:#3a3e45; }
+  .item.active{ border-color: var(--teal); box-shadow: 0 0 0 1px var(--teal) inset; }
+
+  .thumb{
+    width:52px; height:52px;
+    border-radius:6px;
+    overflow:hidden;
+    position:relative;
+    flex-shrink:0;
+    background:#000;
+  }
+  .thumb img{
+    position:absolute; top:0; left:0;
+    width:100%; height:100%; object-fit:cover;
+  }
+  .thumb .b{ clip-path: inset(0 50% 0 0); }
+  .thumb .split{
+    position:absolute; top:0; bottom:0; left:50%;
+    width:1px; background: rgba(255,255,255,.6);
+  }
+
+  .item-meta{ min-width:0; flex:1; }
+  .item-meta .name{
+    font-size:12.5px; font-weight:500;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .item-meta .sub{
+    font-size:10.5px; color: var(--muted); margin-top:2px;
+  }
+  .item .rm{
+    background:none; border:none; color: var(--muted);
+    font-size:15px; cursor:pointer; padding:2px 6px;
+    border-radius:5px; flex-shrink:0;
+  }
+  .item .rm:hover{ color: var(--danger); background:#2a1516; }
+
+  .empty-list{
+    color: var(--muted);
+    font-size: 12px;
+    text-align:center;
+    padding: 30px 16px;
+    line-height:1.6;
+  }
+
+  /* ---------- Main stage ---------- */
+  .stage{
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    min-width:0;
+    background:
+      radial-gradient(ellipse at 50% -10%, #17191c 0%, var(--bg) 60%);
+  }
+
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 14px 22px;
+    border-bottom: 1px solid var(--line);
+    flex-shrink:0;
+  }
+  .topbar .title{
+    font-family:'Sora', sans-serif;
+    font-size: 14.5px; font-weight:600;
+  }
+  .topbar .title .pct{
+    color: var(--orange);
+    margin-left:10px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    font-weight:400;
+  }
+  .topbar-actions{ display:flex; gap:8px; }
+  .icon-btn{
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    color: var(--muted);
+    width:34px; height:34px;
+    border-radius: 8px;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    font-size:15px;
+    transition: color .15s ease, border-color .15s ease;
+  }
+  .icon-btn:hover{ color: var(--text); border-color:#3a3e45; }
+
+  .canvas-wrap{
+    flex:1;
+    position:relative;
+    display:flex; align-items:center; justify-content:center;
+    padding: 26px;
+    min-height:0;
+  }
+
+  .frame{
+    position:relative;
+    max-width:100%; max-height:100%;
+    border-radius: 4px;
+    overflow:hidden;
+    box-shadow: 0 30px 80px -20px rgba(0,0,0,.7), 0 0 0 1px var(--line);
+    background:#000;
+    user-select:none;
+    -webkit-user-select:none;
+  }
+  .frame img{
+    display:block;
+    max-width:88vw;
+    max-height:76vh;
+    width:auto; height:auto;
+    pointer-events:none;
+    user-select:none;
+  }
+  .layer-before{
+    position:absolute; top:0; left:0; height:100%;
+    overflow:hidden;
+    border-right: 1px solid rgba(255,255,255,.85);
+  }
+  .layer-before img{ max-width:none; height:100%; width:auto; }
+
+  .tag{
+    position:absolute; top:12px;
+    padding: 3px 9px;
+    font-family:'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.6px;
+    border-radius: 20px;
+    background: rgba(0,0,0,.55);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255,255,255,.12);
+  }
+  .tag.before{ left:12px; color: #cfd2d6; }
+  .tag.after{ right:12px; color: var(--teal); }
+
+  .divider{
+    position:absolute; top:0; bottom:0;
+    width:2px;
+    background: linear-gradient(180deg, var(--teal), var(--orange));
+    cursor: ew-resize;
+    left:50%;
+    transform: translateX(-50%);
+  }
+  .handle{
+    position:absolute; top:50%; left:50%;
+    width:44px; height:44px;
+    transform: translate(-50%,-50%);
+    border-radius:50%;
+    background: var(--panel);
+    border: 2px solid var(--teal);
+    display:flex; align-items:center; justify-content:center;
+    box-shadow: 0 4px 18px rgba(0,0,0,.5);
+    cursor: ew-resize;
+    color: var(--teal);
+    font-size: 13px;
+  }
+  .handle::before, .handle::after{
+    content:'';
+    position:absolute; top:50%;
+    width:0; height:0;
+    border-top:5px solid transparent;
+    border-bottom:5px solid transparent;
+  }
+  .handle::before{ left:6px; border-right:6px solid var(--teal); transform: translateY(-50%); }
+  .handle::after{ right:6px; border-left:6px solid var(--teal); transform: translateY(-50%); }
+
+  .enhance-panel{
+    flex-shrink:0;
+    border-top: 1px solid var(--line);
+    padding: 14px 22px 18px;
+    display:none;
+  }
+  .enhance-panel.show{ display:block; }
+  .enhance-panel .row{
+    display:flex; align-items:center; gap:14px;
+    margin-bottom: 10px;
+  }
+  .enhance-panel .row:last-child{ margin-bottom:0; }
+  .enhance-panel label{
+    width:88px; flex-shrink:0;
+    font-size:11.5px; color: var(--muted);
+  }
+  .enhance-panel input[type=range]{
+    flex:1;
+    accent-color: var(--teal);
+  }
+  .enhance-panel .val{
+    width:42px; text-align:right;
+    font-family:'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--orange);
+    flex-shrink:0;
+  }
+  .enhance-hint{
+    font-size:10.5px; color:var(--muted); margin-bottom:12px;
+  }
+
+  .empty-stage{
+    color: var(--muted);
+    text-align:center;
+    max-width: 360px;
+  }
+  .empty-stage h2{
+    font-family:'Sora', sans-serif;
+    color: var(--text);
+    font-size: 18px;
+    margin: 0 0 8px;
+  }
+  .empty-stage p{
+    font-size:12.5px; line-height:1.6; margin:0;
+  }
+
+  input[type=file]{ display:none; }
+
+  .grain{
+    position:fixed; inset:0;
+    pointer-events:none;
+    opacity:.03;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    z-index:999;
+  }
+</style>
+</head>
+<body>
+
+<div class="grain"></div>
+
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="brand">
+      <h1>Light<span>box</span></h1>
+      <p>Before / after photo compare</p>
+    </div>
+
+    <div class="add-zone">
+      <button class="btn solid" id="addPairBtn">+ Add before / after pair</button>
+    </div>
+    <div class="add-zone" style="margin-top:0;">
+      <button class="btn" id="addSingleBtn">+ Add single photo (enhance)</button>
+    </div>
+    <p class="hint">Pairs load straight into the slider. A single photo gets adjustable enhance sliders so you can build your own before/after.</p>
+
+    <input type="file" id="fileBefore" accept="image/*">
+    <input type="file" id="fileAfter" accept="image/*">
+    <input type="file" id="fileSingle" accept="image/*">
+
+    <div class="list" id="list">
+      <div class="empty-list" id="emptyList">No photos yet.<br>Add a pair or a single photo to get started.</div>
+    </div>
+  </aside>
+
+  <!-- STAGE -->
+  <main class="stage">
+    <div class="topbar" id="topbar" style="display:none;">
+      <div class="title" id="titleText">—<span class="pct mono" id="pctText"></span></div>
+      <div class="topbar-actions">
+        <button class="icon-btn" id="resetBtn" title="Reset divider to 50%">⟲</button>
+        <button class="icon-btn" id="downloadBtn" title="Save current split view as PNG">⇩</button>
+        <button class="icon-btn" id="fullscreenBtn" title="Fullscreen">⤢</button>
+      </div>
+    </div>
+
+    <div class="canvas-wrap" id="canvasWrap">
+      <div class="empty-stage" id="emptyStage">
+        <h2>Nothing loaded</h2>
+        <p>Add a before/after pair from the panel on the left, or drop in one photo and use the enhance sliders to create your own comparison. Everything runs locally in this file — nothing uploads anywhere.</p>
+      </div>
+
+      <div class="frame" id="frame" style="display:none;">
+        <img id="afterImg" alt="after">
+        <div class="layer-before" id="beforeLayer">
+          <img id="beforeImg" alt="before">
+        </div>
+        <span class="tag before" id="tagBefore">BEFORE</span>
+        <span class="tag after" id="tagAfter">AFTER</span>
+        <div class="divider" id="divider">
+          <div class="handle">↔</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="enhance-panel" id="enhancePanel">
+      <p class="enhance-hint">Adjusting the "after" side live. Values are baked in when you save.</p>
+      <div class="row">
+        <label>Brightness</label>
+        <input type="range" id="rBrightness" min="80" max="160" value="112">
+        <span class="val mono" id="vBrightness">112%</span>
+      </div>
+      <div class="row">
+        <label>Contrast</label>
+        <input type="range" id="rContrast" min="80" max="160" value="118">
+        <span class="val mono" id="vContrast">118%</span>
+      </div>
+      <div class="row">
+        <label>Saturation</label>
+        <input type="range" id="rSaturate" min="80" max="220" value="145">
+        <span class="val mono" id="vSaturate">145%</span>
+      </div>
+      <div class="row">
+        <label>Sharpen</label>
+        <input type="range" id="rSharp" min="0" max="100" value="35">
+        <span class="val mono" id="vSharp">35%</span>
+      </div>
+    </div>
+  </main>
+</div>
+
+<canvas id="exportCanvas" style="display:none;"></canvas>
+
+<script>
+(function(){
+  const state = { items: [], activeId: null };
+  let dragging = false;
+
+  const list = document.getElementById('list');
+  const emptyList = document.getElementById('emptyList');
+  const emptyStage = document.getElementById('emptyStage');
+  const frame = document.getElementById('frame');
+  const topbar = document.getElementById('topbar');
+  const titleText = document.getElementById('titleText');
+  const pctText = document.getElementById('pctText');
+  const beforeImg = document.getElementById('beforeImg');
+  const afterImg = document.getElementById('afterImg');
+  const beforeLayer = document.getElementById('beforeLayer');
+  const divider = document.getElementById('divider');
+  const canvasWrap = document.getElementById('canvasWrap');
+  const enhancePanel = document.getElementById('enhancePanel');
+  const tagBefore = document.getElementById('tagBefore');
+  const tagAfter = document.getElementById('tagAfter');
+
+  function uid(){ return Math.random().toString(36).slice(2,9); }
+
+  function fileToURL(file){ return URL.createObjectURL(file); }
+
+  function refreshList(){
+    list.querySelectorAll('.item').forEach(el => el.remove());
+    if(state.items.length === 0){
+      emptyList.style.display = 'block';
+      return;
+    }
+    emptyList.style.display = 'none';
+    state.items.forEach(item => {
+      const el = document.createElement('div');
+      el.className = 'item' + (item.id === state.activeId ? ' active' : '');
+      el.dataset.id = item.id;
+      el.innerHTML = `
+        <div class="thumb">
+          <img src="${item.beforeURL}">
+          <img class="b" src="${item.afterURL}">
+          <div class="split"></div>
+        </div>
+        <div class="item-meta">
+          <div class="name">${item.name}</div>
+          <div class="sub">${item.type === 'pair' ? 'before / after pair' : 'single · enhanced'}</div>
+        </div>
+        <button class="rm" title="Remove">✕</button>
+      `;
+      el.addEventListener('click', (e) => {
+        if(e.target.classList.contains('rm')) return;
+        selectItem(item.id);
+      });
+      el.querySelector('.rm').addEventListener('click', (e) => {
+        e.stopPropagation();
+        removeItem(item.id);
+      });
+      list.appendChild(el);
+    });
+  }
+
+  function selectItem(id){
+    state.activeId = id;
+    const item = state.items.find(i => i.id === id);
+    if(!item) return;
+
+    emptyStage.style.display = 'none';
+    frame.style.display = '';
+    topbar.style.display = 'flex';
+
+    beforeImg.src = item.beforeURL;
+    afterImg.src = item.afterURL;
+    titleText.textContent = item.name;
+
+    if(item.type === 'single'){
+      enhancePanel.classList.add('show');
+      tagBefore.textContent = 'ORIGINAL';
+      tagAfter.textContent = 'ENHANCED';
+      applyEnhance(item);
+    } else {
+      enhancePanel.classList.remove('show');
+      afterImg.style.filter = 'none';
+      tagBefore.textContent = 'BEFORE';
+      tagAfter.textContent = 'AFTER';
+    }
+
+    setDivider(50);
+    refreshList();
+  }
+
+  function removeItem(id){
+    const idx = state.items.findIndex(i => i.id === id);
+    if(idx === -1) return;
+    state.items.splice(idx, 1);
+    if(state.activeId === id){
+      state.activeId = state.items.length ? state.items[0].id : null;
+      if(state.activeId){
+        selectItem(state.activeId);
+      } else {
+        frame.style.display = 'none';
+        topbar.style.display = 'none';
+        enhancePanel.classList.remove('show');
+        emptyStage.style.display = 'block';
+      }
+    }
+    refreshList();
+  }
+
+  function setDivider(pct){
+    pct = Math.max(0, Math.min(100, pct));
+    divider.style.left = pct + '%';
+    beforeLayer.style.width = pct + '%';
+    pctText.textContent = Math.round(pct) + '%';
+  }
+
+  // ---- Divider dragging ----
+  function pctFromEvent(clientX){
+    const rect = frame.getBoundingClientRect();
+    return ((clientX - rect.left) / rect.width) * 100;
+  }
+  divider.addEventListener('mousedown', (e) => { dragging = true; e.preventDefault(); });
+  frame.addEventListener('mousedown', (e) => {
+    if(e.target === divider || e.target.closest('.handle')){ dragging = true; }
+  });
+  window.addEventListener('mousemove', (e) => {
+    if(!dragging || !frame.offsetParent) return;
+    setDivider(pctFromEvent(e.clientX));
+  });
+  window.addEventListener('mouseup', () => dragging = false);
+
+  // touch support
+  divider.addEventListener('touchstart', () => dragging = true, {passive:true});
+  window.addEventListener('touchmove', (e) => {
+    if(!dragging) return;
+    setDivider(pctFromEvent(e.touches[0].clientX));
+  }, {passive:true});
+  window.addEventListener('touchend', () => dragging = false);
+
+  // click-anywhere-on-frame to jump divider
+  frame.addEventListener('click', (e) => {
+    if(e.target.closest('.handle')) return;
+    setDivider(pctFromEvent(e.clientX));
+  });
+
+  // keyboard nudge
+  window.addEventListener('keydown', (e) => {
+    if(!frame.offsetParent) return;
+    if(e.key === 'ArrowLeft'){ setDivider(parseFloat(divider.style.left) - 2); }
+    if(e.key === 'ArrowRight'){ setDivider(parseFloat(divider.style.left) + 2); }
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', () => setDivider(50));
+
+  // ---- Enhance sliders ----
+  function applyEnhance(item){
+    const b = document.getElementById('rBrightness').value;
+    const c = document.getElementById('rContrast').value;
+    const s = document.getElementById('rSaturate').value;
+    const sh = document.getElementById('rSharp').value;
+    item.enhance = { b, c, s, sh };
+    afterImg.style.filter = `brightness(${b}%) contrast(${c}%) saturate(${s}%)`;
+  }
+  ['rBrightness','rContrast','rSaturate','rSharp'].forEach(id => {
+    const input = document.getElementById(id);
+    const valEl = document.getElementById('v' + id.slice(1));
+    input.addEventListener('input', () => {
+      valEl.textContent = input.value + '%';
+      const item = state.items.find(i => i.id === state.activeId);
+      if(item && item.type === 'single') applyEnhance(item);
+    });
+  });
+
+  // ---- Adding photos ----
+  const addPairBtn = document.getElementById('addPairBtn');
+  const addSingleBtn = document.getElementById('addSingleBtn');
+  const fileBefore = document.getElementById('fileBefore');
+  const fileAfter = document.getElementById('fileAfter');
+  const fileSingle = document.getElementById('fileSingle');
+
+  addPairBtn.addEventListener('click', () => fileBefore.click());
+  fileBefore.addEventListener('change', () => {
+    if(!fileBefore.files[0]) return;
+    fileAfter.value = '';
+    fileAfter.click();
+  });
+  fileAfter.addEventListener('change', () => {
+    if(!fileBefore.files[0] || !fileAfter.files[0]) return;
+    const beforeFile = fileBefore.files[0];
+    const afterFile = fileAfter.files[0];
+    const item = {
+      id: uid(),
+      type: 'pair',
+      name: beforeFile.name.replace(/\.[^.]+$/, ''),
+      beforeURL: fileToURL(beforeFile),
+      afterURL: fileToURL(afterFile)
+    };
+    state.items.push(item);
+    selectItem(item.id);
+  });
+
+  addSingleBtn.addEventListener('click', () => fileSingle.click());
+  fileSingle.addEventListener('change', () => {
+    if(!fileSingle.files[0]) return;
+    const f = fileSingle.files[0];
+    const url = fileToURL(f);
+    const item = {
+      id: uid(),
+      type: 'single',
+      name: f.name.replace(/\.[^.]+$/, ''),
+      beforeURL: url,
+      afterURL: url
+    };
+    state.items.push(item);
+    selectItem(item.id);
+  });
+
+  // ---- Fullscreen ----
+  document.getElementById('fullscreenBtn').addEventListener('click', () => {
+    if(!document.fullscreenElement){
+      document.documentElement.requestFullscreen().catch(()=>{});
+    } else {
+      document.exitFullscreen();
+    }
+  });
+
+  // ---- Download current split view as PNG ----
+  document.getElementById('downloadBtn').addEventListener('click', () => {
+    const item = state.items.find(i => i.id === state.activeId);
+    if(!item) return;
+
+    const canvas = document.getElementById('exportCanvas');
+    const ctx = canvas.getContext('2d');
+    const bImg = new Image();
+    const aImg = new Image();
+    bImg.crossOrigin = 'anonymous';
+    aImg.crossOrigin = 'anonymous';
+    bImg.src = item.beforeURL;
+    aImg.src = item.afterURL;
+
+    Promise.all([
+      new Promise(res => bImg.onload = res),
+      new Promise(res => aImg.onload = res)
+    ]).then(() => {
+      const w = aImg.naturalWidth, h = aImg.naturalHeight;
+      canvas.width = w; canvas.height = h;
+      const pct = parseFloat(divider.style.left) / 100;
+
+      if(item.type === 'single' && item.enhance){
+        ctx.filter = `brightness(${item.enhance.b}%) contrast(${item.enhance.c}%) saturate(${item.enhance.s}%)`;
+      } else {
+        ctx.filter = 'none';
+      }
+      ctx.drawImage(aImg, 0, 0, w, h);
+
+      ctx.filter = 'none';
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, 0, w * pct, h);
+      ctx.clip();
+      ctx.drawImage(bImg, 0, 0, w, h);
+      ctx.restore();
+
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.fillRect(w * pct - 1, 0, 2, h);
+
+      const link = document.createElement('a');
+      link.download = item.name + '-compare.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    });
+  });
+
+  refreshList();
+})();
+</script>
+</body>
+</html>
