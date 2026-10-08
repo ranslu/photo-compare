@@ -7,5 +7,8 @@
 - Keep replies short: result first, no narration of options not taken.
 - Keep this file short — it is loaded into every session.
 
+## Project
+Lightbox: a single-file before/after photo comparison tool (`photo-compare.html`, ~21 KB, no build step). Open it in a browser to use.
+
 ## Reference
 - LLM token/prompt-caching cost notes: `.claude/skills/token-caching/SKILL.md` (loaded on demand via the `token-caching` skill).
